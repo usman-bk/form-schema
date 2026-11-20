@@ -97,6 +97,7 @@ export function reducer(s: State, a: Action): State {
       return {
         ...s,
         values,
+        errors: shiftRowErrors(s.errors, a.path, a.index),
         focus: focus(s, a.path),
         announcement: say(s, `${a.group.itemLabel} ${a.index + 1} removed. ${next.length} left`),
       };
@@ -128,4 +129,25 @@ export function reducer(s: State, a: Action): State {
     case "announce":
       return { ...s, announcement: say(s, a.text) };
   }
+}
+
+/**
+ * Errors are keyed by path, and a row's path contains its index. Removing row
+ * i drops its errors and moves those of every later row down by one, or each
+ * message ends up on a different row's input.
+ */
+export function shiftRowErrors(errors: Errors, group: string, removed: number): Errors {
+  const out: Errors = {};
+  const prefix = `${group}.`;
+  for (const [key, msg] of Object.entries(errors)) {
+    if (!key.startsWith(prefix)) {
+      out[key] = msg;
+      continue;
+    }
+    const [idxText, ...tail] = key.slice(prefix.length).split(".");
+    const idx = Number(idxText);
+    if (idx === removed) continue;
+    out[idx > removed ? [group, idx - 1, ...tail].join(".") : key] = msg;
+  }
+  return out;
 }

@@ -281,6 +281,31 @@ describe("repeatable group", () => {
     expect(screen.getByRole("button", { name: "Add driver" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "Add driver" })).toHaveAccessibleDescription("Add at least 1 driver");
   });
+
+  it("keeps an error on the row it belongs to after an earlier row is removed", async () => {
+    const { user } = setup();
+    await stepOne(user);
+    await next(user);
+    await stepTwo(user);
+    await next(user);
+    for (let i = 0; i < 2; i++) await user.click(screen.getByRole("button", { name: "Add driver" }));
+    const names = screen.getAllByLabelText("Driver name");
+    await user.type(names[0]!, "A");
+    await user.type(names[1]!, "B");
+    // row 3 left empty: it carries the "required" error after pressing Next
+    await user.type(screen.getAllByLabelText("Years licensed")[0]!, "5");
+    await user.type(screen.getAllByLabelText("Years licensed")[1]!, "5");
+    await user.type(screen.getAllByLabelText("Years licensed")[2]!, "5");
+    await next(user);
+    expect(screen.getAllByLabelText("Driver name")[2]).toHaveAttribute("aria-invalid", "true");
+
+    await user.click(screen.getByRole("button", { name: "Remove driver 1" }));
+    const after = screen.getAllByLabelText("Driver name");
+    expect(after).toHaveLength(2);
+    expect(after[0]).not.toHaveAttribute("aria-invalid");
+    expect(after[1]).toHaveAttribute("aria-invalid", "true");
+    expect(after[1]).toHaveAccessibleDescription("Driver name is required");
+  });
 });
 
 describe("draft autosave", () => {

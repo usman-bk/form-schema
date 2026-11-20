@@ -280,7 +280,10 @@ export function FormEngine(props: FormEngineProps) {
             <button
               type="button"
               className="secondary"
-              onClick={() => dispatch({ type: "removeRow", schema, path, index: i, group: g })}
+              onClick={() => {
+                checks.clearUnder(`${path}.`);
+                dispatch({ type: "removeRow", schema, path, index: i, group: g });
+              }}
             >
               {`Remove ${g.itemLabel.toLowerCase()} ${i + 1}`}
             </button>

@@ -77,14 +77,10 @@ export function loadDraft(
   }
   if (raw === null) return { outcome: "none" };
 
-  const discard = (reason: string): DraftResult => {
-    try {
-      storage.removeItem(draftKey(schema));
-    } catch {
-      /* nothing to do */
-    }
-    return { outcome: "discarded", reason };
-  };
+  // Reading must not change storage: React builds the initial state twice in
+  // StrictMode, and a read that deleted what it discarded made the second
+  // read report "no draft" and lose the notice. The next save replaces it.
+  const discard = (reason: string): DraftResult => ({ outcome: "discarded", reason });
 
   let env: Envelope;
   try {

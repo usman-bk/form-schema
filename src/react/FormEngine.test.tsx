@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -330,6 +331,16 @@ describe("draft autosave", () => {
     setup({ migrations: {} });
     expect(heading()).toHaveTextContent("Step 1 of 4");
     expect(screen.getByLabelText("Full name")).toHaveValue("");
+    expect(screen.getByText("An earlier draft no longer fits this form and was cleared.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("shows the same notice under StrictMode, which builds the initial state twice", () => {
+    localStorage.setItem(draftKey(quoteSchema), oldDraft);
+    render(
+      <StrictMode>
+        <FormEngine schema={quoteSchema} migrations={{}} onSubmit={vi.fn()} />
+      </StrictMode>,
+    );
     expect(screen.getByText("An earlier draft no longer fits this form and was cleared.", { selector: "p" })).toBeInTheDocument();
   });
 

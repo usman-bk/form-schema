@@ -70,7 +70,8 @@ describe("draft after the schema changed", () => {
     s.setItem(draftKey(quoteV2), v1Draft());
     const r = loadDraft(quoteV2, s);
     expect(r).toEqual({ outcome: "discarded", reason: "no migration from version 1" });
-    expect(s.data.has(draftKey(quoteV2))).toBe(false);
+    // Reading is free of side effects, so a second read says the same thing.
+    expect(loadDraft(quoteV2, s)).toEqual(r);
   });
 
   it("migrates, then drops what the new schema does not know and blanks a removed option", () => {

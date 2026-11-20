@@ -1,9 +1,17 @@
 import type { Expr, Field, FormSchema, Values } from "./schema";
 import { resolve } from "./conditions";
 
-export function evalExpr(e: Expr, row: Values, root: Values): number {
+/**
+ * Null means "cannot be worked out yet": an input is blank or not a number,
+ * or the result would be infinite. Blank is not zero. Number("") is 0, which
+ * priced a quote at 0 while the age was still empty.
+ */
+export function evalExpr(e: Expr, row: Values, root: Values): number | null {
   if ("value" in e) return e.value;
-  if (!("op" in e)) return Number(resolve(e.ref, row, root));
+  if (!("op" in e)) {
+    const v = resolve(e.ref, row, root);
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  }
   if (e.op === "count") {
     const v = resolve(e.ref, row, root);
     return Array.isArray(v) ? v.length : 0;
@@ -12,24 +20,38 @@ export function evalExpr(e: Expr, row: Values, root: Values): number {
     const key = String(resolve(e.ref, row, root));
     return e.map[key] ?? e.otherwise;
   }
-  const a = e.args.map((x) => evalExpr(x, row, root));
+  const a: number[] = [];
+  for (const arg of e.args) {
+    const n = evalExpr(arg, row, root);
+    if (n === null) return null;
+    a.push(n);
+  }
   const [first = 0, second = 0] = a;
+  let out: number;
   switch (e.op) {
     case "add":
-      return a.reduce((s, n) => s + n, 0);
+      out = a.reduce((s, n) => s + n, 0);
+      break;
     case "mul":
-      return a.reduce((s, n) => s * n, 1);
+      out = a.reduce((s, n) => s * n, 1);
+      break;
     case "sub":
-      return first - second;
+      out = first - second;
+      break;
     case "div":
-      return first / second;
+      out = first / second;
+      break;
     case "min":
-      return Math.min(...a);
+      out = Math.min(...a);
+      break;
     case "max":
-      return Math.max(...a);
+      out = Math.max(...a);
+      break;
     case "round":
-      return Math.round(first);
+      out = Math.round(first);
+      break;
   }
+  return Number.isFinite(out) ? out : null;
 }
 
 /**

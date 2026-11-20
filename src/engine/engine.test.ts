@@ -132,4 +132,22 @@ describe("computed fields", () => {
     const v = applyComputed(priced, { value: 10000, cover: "basic", drivers: [{}], monthly: null, yearly: null });
     expect(v.yearly).toBe(210 * 12);
   });
+
+  it("leaves the price empty while an input is empty, instead of pricing it as zero", () => {
+    const v = applyComputed(priced, { value: "", cover: "basic", drivers: [{}], monthly: null, yearly: null });
+    expect(v.monthly).toBeNull();
+    expect(v.yearly).toBeNull();
+  });
+
+  it("gives null rather than Infinity for a division by zero", () => {
+    const divide: FormSchema = {
+      id: "d", version: 1,
+      steps: [{ id: "s", title: "S", fields: [
+        { name: "n", label: "N", type: "number" },
+        { name: "per", label: "Per", type: "computed", expr: { op: "div", args: [{ value: 100 }, { ref: "n" }] } },
+      ] }],
+    };
+    expect(applyComputed(divide, { n: 0, per: null }).per).toBeNull();
+    expect(applyComputed(divide, { n: 4, per: null }).per).toBe(25);
+  });
 });

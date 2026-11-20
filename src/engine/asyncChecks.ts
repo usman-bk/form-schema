@@ -8,7 +8,8 @@ export interface CheckState {
 }
 
 export interface AsyncChecks {
-  request(path: string, key: string, value: string): void;
+  /** False when no validator is registered under `key`, so nothing was started. */
+  request(path: string, key: string, value: string): boolean;
   get(path: string): CheckState | undefined;
   clear(path: string): void;
   /** True only when the stored answer is a "valid" for exactly this value. */
@@ -42,7 +43,7 @@ export function createAsyncChecks(
   return {
     request(path, key, value) {
       const validator = validators[key];
-      if (!validator) return;
+      if (!validator) return false;
       drop(path);
       const slot: Slot = { state: { status: "pending", value }, controller: new AbortController() };
       slots.set(path, slot);
@@ -56,6 +57,7 @@ export function createAsyncChecks(
         (message) => settle(message ? { status: "invalid", value, message } : { status: "valid", value }),
         () => settle({ status: "failed", value, message: "Could not check this just now" }),
       );
+      return true;
     },
     get: (path) => slots.get(path)?.state,
     clear(path) {

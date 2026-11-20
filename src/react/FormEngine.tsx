@@ -145,12 +145,15 @@ export function FormEngine(props: FormEngineProps) {
         const text = typeof value === "string" ? value.trim() : "";
         if (text === "") continue;
         const c = checks.get(path);
-        if (c && c.value === text && c.status === "invalid") errors[path] = c.message ?? `${field.label} is not available`;
-        else if (c && c.value === text && c.status === "valid") continue;
-        else if (c && c.value === text && c.status === "pending") errors[path] = `Still checking ${field.label.toLowerCase()}`;
-        else {
-          checks.request(path, field.asyncCheck, text);
-          errors[path] = `Checking ${field.label.toLowerCase()}, press again in a moment`;
+        const current = c && c.value === text ? c : undefined;
+        if (current?.status === "valid") continue;
+        if (current?.status === "invalid") errors[path] = current.message ?? `${field.label} is not available`;
+        else if (current?.status === "pending") errors[path] = `Still checking ${field.label.toLowerCase()}`;
+        else if (checks.request(path, field.asyncCheck, text)) {
+          errors[path] =
+            current?.status === "failed"
+              ? `Could not check ${field.label.toLowerCase()}, trying again. Press once more`
+              : `Checking ${field.label.toLowerCase()}, press again in a moment`;
         }
       }
       return errors;
@@ -166,14 +169,11 @@ export function FormEngine(props: FormEngineProps) {
   const submit = async () => {
     const values = stateRef.current.values;
     const all: Errors = {};
-    let firstBad = -1;
-    schema.steps.forEach((_, i) => {
-      const e = stepErrors(i, values);
-      if (Object.keys(e).length && firstBad < 0) firstBad = i;
-      Object.assign(all, e);
-    });
+    const perStep = schema.steps.map((_, i) => stepErrors(i, values));
+    perStep.forEach((e) => Object.assign(all, e));
+    const firstBad = perStep.findIndex((e) => Object.keys(e).length > 0);
     if (firstBad >= 0) {
-      const there = stepErrors(firstBad, values);
+      const there = perStep[firstBad] as Errors;
       dispatch({
         type: "invalid",
         step: firstBad,

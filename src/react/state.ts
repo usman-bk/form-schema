@@ -41,7 +41,8 @@ export type Action =
   | { type: "submitting"; on: boolean }
   | { type: "failed"; formErrors: string[]; text: string }
   | { type: "done"; result: unknown }
-  | { type: "announce"; text: string };
+  | { type: "announce"; text: string }
+  | { type: "clearError"; path: string; only: string[] };
 
 export function init(
   schema: FormSchema,
@@ -128,6 +129,14 @@ export function reducer(s: State, a: Action): State {
       return { ...s, submitting: false, done: a.result ?? true, focus: focus(s, "heading"), announcement: say(s, "Quote submitted") };
     case "announce":
       return { ...s, announcement: say(s, a.text) };
+    case "clearError": {
+      // Only drop the message we were told about, so a server error on the same field survives.
+      const current = s.errors[a.path];
+      if (current === undefined || !a.only.includes(current)) return s;
+      const errors = { ...s.errors };
+      delete errors[a.path];
+      return { ...s, errors };
+    }
   }
 }
 

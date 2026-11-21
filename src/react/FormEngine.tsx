@@ -49,6 +49,12 @@ export interface FormEngineProps {
   submitLabel?: string;
 }
 
+/** The interim messages a background check leaves on a field: pending, retrying, starting. */
+const checkingMessages = (label: string): string[] => {
+  const l = label.toLowerCase();
+  return [`Still checking ${l}`, `Could not check ${l}, trying again. Press once more`, `Checking ${l}, press again in a moment`];
+};
+
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function FormEngine(props: FormEngineProps) {
@@ -118,6 +124,7 @@ export function FormEngine(props: FormEngineProps) {
       const sig = `${c.status}:${c.value}`;
       if (seen.current.get(leaf.path) === sig) continue;
       seen.current.set(leaf.path, sig);
+      if (c.status !== "pending") dispatch({ type: "clearError", path: leaf.path, only: checkingMessages(leaf.field.label) });
       if (c.status === "valid") dispatch({ type: "announce", text: `${leaf.field.label} is available` });
       if (c.status === "invalid" || c.status === "failed") dispatch({ type: "announce", text: c.message ?? "" });
     }
@@ -148,12 +155,10 @@ export function FormEngine(props: FormEngineProps) {
         const current = c && c.value === text ? c : undefined;
         if (current?.status === "valid") continue;
         if (current?.status === "invalid") errors[path] = current.message ?? `${field.label} is not available`;
-        else if (current?.status === "pending") errors[path] = `Still checking ${field.label.toLowerCase()}`;
+        else if (current?.status === "pending") errors[path] = checkingMessages(field.label)[0] as string;
         else if (checks.request(path, field.asyncCheck, text)) {
-          errors[path] =
-            current?.status === "failed"
-              ? `Could not check ${field.label.toLowerCase()}, trying again. Press once more`
-              : `Checking ${field.label.toLowerCase()}, press again in a moment`;
+          const [, retrying, starting] = checkingMessages(field.label) as [string, string, string];
+          errors[path] = current?.status === "failed" ? retrying : starting;
         }
       }
       return errors;

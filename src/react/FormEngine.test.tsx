@@ -146,6 +146,9 @@ describe("background username check", () => {
     expect(screen.getByLabelText("Username")).toHaveAccessibleDescription(/Still checking username/);
     expect(screen.getByLabelText("Username")).toHaveFocus();
     await act(async () => calls.at(-1)!.resolve(null));
+    // The interim message goes as soon as the check settles, not on the next press.
+    expect(screen.getByLabelText("Username")).not.toHaveAccessibleDescription(/Still checking/);
+    expect(screen.getByLabelText("Username")).not.toHaveAttribute("aria-invalid", "true");
     await next(user);
     expect(heading()).toHaveTextContent("Step 2");
   });
